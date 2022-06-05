@@ -20,7 +20,9 @@
  * 5、Promise.resolve()实现
  * 6、Promise.reject()实现
  * 7、Promise.all()实现
- * 8、Promise.race()实现
+ * 8、Promise.allSettled()实现
+ * 9、Promise.race()实现
+ * 10、Promise.any()实现
  */
 
 // 手动实现
