@@ -18,7 +18,7 @@ function myNew() {
     const constructor = arguments[0]
     const args = [...arguments].slice(1)
 
-    const obj = new Object()  // 1、新建对象
+    const obj = new Object()  // 1、新建对象。实现new就不要使用new  {}
 
     obj.__proto__ = constructor.prototype; // 2、新对象的下划线原型 指向 构造函数的原型对象
     const result = constructor.apply(obj, args) // 3、构造函数的this指向新对象，并给新对象添加属性
