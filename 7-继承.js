@@ -45,3 +45,6 @@ console.log(p1.name, p2.name)
 p1.sayHi()
 p2.sayHi()
 
+
+// 寄生组合继承
+

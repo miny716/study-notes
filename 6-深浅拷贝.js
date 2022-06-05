@@ -8,11 +8,11 @@ function shallowCopy(obj) {
 }
 
 // 深拷贝：通过递归调用浅拷贝的方式。增加一个指针并申请一个新的内存
-function deepCopy(obj) {
+function deepCopy(obj) {   // obj---->newObj
     if (obj && typeof obj === 'object') {
         let newObj = Array.isArray(obj) ? [] : {}
 
-        for (let key in obj) {
+        for (let key in obj) {   // 使用 for-in 遍历，可以遍历数组索引，也可以遍历对象的key
             const val = obj[key]
             if (typeof val === 'object') {
                 newObj[key] = deepCopy(val)

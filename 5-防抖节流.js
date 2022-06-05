@@ -23,7 +23,7 @@ function debounce(fn, delay) {
     return function (...args) {
         if (timer) clearTimeout(timer)  // 防抖重在清零 clearTimeout(timer)
 
-        timer = setTimeout(() => {
+        timer = setTimeout(() => {   // 注意！！！定时器里面使用箭头函数
             fn.apply(this, args)
         }, delay);
     }

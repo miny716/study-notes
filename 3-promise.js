@@ -1,5 +1,5 @@
 /**
- * 知识准备：
+ * 知识准备：https://juejin.cn/post/7094087425261043749#heading-3
  * 1、Promise
  * 2、ES6类-静态方法：类（class）通过 static 关键字定义静态方法。不能在类的实例上调用静态方法，而应该通过类本身调用。
  *  类相当于实例的原型，所有在类中定义的方法，都会被实例继承。
@@ -30,11 +30,14 @@ class MyPromise {
     static fulfilledStatus = 'fulfilled'
     static rejectedStatus = 'rejected'
 
+    // 类的构造器，通过new方法创建实例的时候，会自动调用该方法。形参为new 类时候的传入参数。new Promise((resolve, reject) => {})
     constructor(executor) {
         this.promiseState = MyPromise.pendingStatus
         this.promiseResult = null
 
-        // 存放 then 函数中需要执行的 onFulfilled、onRejected 回调函数
+        // 存放 then 函数中需要执行的 onFulfilled、onRejected 回调函数。
+        // 解决当resolve在setTimeout内执行，then函数中state还是pending状态，
+        // 就需要在then调用的时候，将成功和失败【先】存到各自的数组中，等到setTimeout中reject或者resolve，【再】调用它们。
         this.resolveQueue = []
         this.rejectQueue = []
 
@@ -45,7 +48,7 @@ class MyPromise {
     // 1.1、resolve回调函数
     resolve(res) {
         if (this.promiseState === MyPromise.pendingStatus) {
-            // 开启微任务，异步执行 resolveQueue 队列中保存的 onFulfilled 函数
+            // 使用异步微任务，保证then中回调函数已经加载。异步执行 resolveQueue 队列中保存的 onFulfilled 函数
             setTimeout(() => {
                 this.promiseResult = res
                 this.promiseState = MyPromise.fulfilledStatus
@@ -58,7 +61,7 @@ class MyPromise {
     // 1.2、reject回调函数
     reject(err) {
         if (this.promiseState === MyPromise.pendingStatus) {
-            // 开启微任务，异步执行 rejectQueue 队列中保存的 onRejected 函数
+            // 使用异步微任务，保证then中回调函数已经加载。异步执行 rejectQueue 队列中保存的 onRejected 函数
             setTimeout(() => {
                 this.promiseResult = err
                 this.promiseState = MyPromise.rejectedStatus
@@ -77,6 +80,24 @@ class MyPromise {
         onRejected = typeof onRejected === 'function' ? onRejected : err => { throw err }
 
         return new MyPromise((resolve, reject) => {
+            // 情况1.如果在then调用的时候, 状态已经确定下来
+            if (this.pendingStatus === MyPromise.fulfilledStatus) {
+                try {
+                    const result = onFulfilled(this.promiseResult)
+                    resolve(result)
+                } catch (err) {
+                    reject(err)
+                }
+            }
+            if (this.pendingStatus === MyPromise.rejectedStatus) {
+                try {
+                    const result = onRejected(this.promiseResult)
+                    resolve(result)
+                } catch (err) {
+                    reject(err)
+                }
+            }
+            // 情况2：执行then回调时还未确定状态，考虑到多个执行，存储到数组中
             if (this.promiseState === MyPromise.pendingStatus) {
                 // 实现 onFulfilled \ onRejected的返回值，均会传递给下一次的 then 中的 onFulfilled \ onRejected函数
                 this.resolveQueue.push((res) => {
@@ -107,6 +128,7 @@ class MyPromise {
     }
     // 4、finally方法返回一个Promise。在promise结束时，无论结果是fulfilled或者是rejected，都会执行指定的回调函数cb
     finally(cb) {
+        // return this.then(() => { cb() }, () => { cb() })
         return new MyPromise((resolve, reject) => {
             if (this.promiseState === MyPromise.pendingStatus) {
                 this.resolveQueue.push((res) => {
@@ -159,11 +181,47 @@ class MyPromise {
 
     }
 
-    // 8、Promise.race()：返回一个 promise，一旦迭代器中的某个promise率先改变状态，promise 实例的状态就会跟着改变。
+    // 8、Promise.allSettled:只有等到所有这些参数实例都返回结果，不管是fulfilled还是rejected，包装实例才会结束。
+    static allSettled(promiseList) {
+        return new Promise((resolve, reject) => {
+            let resultList = new Array(promiseList.length), i = 0
+            promiseList.forEach(p => {
+                p.then(res => {
+                    resultList[i] = { status: MyPromise.fulfilledStatus, value: res }
+                    i++
+                    if (i === promiseList.length) resolve(resultList)
+                }, (err) => {
+                    resultList[i] = { status: MyPromise.rejectedStatus, value: err }
+                    i++
+                    if (i === promiseList.length) reject(resultList)
+                })
+            })
+            return resultList
+        })
+    }
+
+    // 9、Promise.race()：返回一个 promise，一旦迭代器中的某个promise率先改变状态，promise 实例的状态就会跟着改变。
     // 率先改变状态的promise返回值传递整体promise实例的回调函数 。
     static race(promiseList) {
         return new MyPromise((resolve, reject) => {
             promiseList.forEach(p => p.then(res => resolve(res), err => reject(err)));
+        })
+    }
+
+    // 10、Promise.any():只要参数实例有一个变成fulfilled状态，包装实例就会变成fulfilled状态；
+    // 如果所有参数实例都变成rejected状态，包装实例就会变成rejected状态。
+    static any(promiseList) {
+        return new MyPromise((resolve, reject) => {
+            let resultList = []
+            promiseList.forEach(p => {
+                p.then(res => {
+                    resolve(res)
+                }, err => {
+                    resultList.push(err)
+                    //AggregateError:当多个错误​​需要包装在一个错误中时，该对象表示一个错误
+                    if (resultList.length === promiseList.length) reject(new AggregateError(resultList))
+                })
+            })
         })
     }
 }
@@ -192,23 +250,23 @@ let myPromise = new MyPromise((resolve, reject) => {
 console.log('========MyPromise======end===')
 
 
-// const p1 = new MyPromise((resolve, reject) => {
-//     setTimeout(() => {
-//         resolve(1)
-//     }, 300);
-// })
+const p1 = new MyPromise((resolve, reject) => {
+    setTimeout(() => {
+        resolve(1)
+    }, 300);
+})
 
-// const p2 = new MyPromise((resolve, reject) => {
-//     setTimeout(() => {
-//         resolve(2)
-//     }, 100);
-// })
+const p2 = new MyPromise((resolve, reject) => {
+    setTimeout(() => {
+        resolve(2)
+    }, 100);
+})
 
-// const p3 = new MyPromise((resolve, reject) => {
-//     setTimeout(() => {
-//         reject(3)
-//     }, 200);
-// })
+const p3 = new MyPromise((resolve, reject) => {
+    setTimeout(() => {
+        reject(3)
+    }, 500);
+})
 
 // MyPromise.all([p1, p2]).then(res => {
 //     console.log('====pAll1-res====', res)
@@ -224,6 +282,18 @@ console.log('========MyPromise======end===')
 //     console.log('====pRace-res====', res)
 // }).catch(err => {
 //     console.log('=====pRace-catch====', err)
+// })
+
+MyPromise.allSettled([p1, p2, p3]).then(res => {
+    console.log('====allSettled-res====', res)
+}).catch(err => {
+    console.log('=====allSettled-catch====', err)
+})
+
+// MyPromise.any([p1, p2, p3]).then(res => {
+//     console.log('====any-res====', res)
+// }).catch(err => {
+//     console.log('=====any-catch====', err)
 // })
 
 
