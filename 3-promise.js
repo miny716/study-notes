@@ -186,19 +186,16 @@ class MyPromise {
     // 8、Promise.allSettled:只有等到所有这些参数实例都返回结果，不管是fulfilled还是rejected，包装实例才会结束。
     static allSettled(promiseList) {
         return new Promise((resolve, reject) => {
-            let resultList = new Array(promiseList.length), i = 0
+            let resultList = []
             promiseList.forEach(p => {
                 p.then(res => {
-                    resultList[i] = { status: MyPromise.fulfilledStatus, value: res }
-                    i++
-                    if (i === promiseList.length) resolve(resultList)
+                    resultList.push({ status: MyPromise.fulfilledStatus, value: res })
+                    if (resultList.length === promiseList.length) resolve(resultList)
                 }, (err) => {
-                    resultList[i] = { status: MyPromise.rejectedStatus, value: err }
-                    i++
-                    if (i === promiseList.length) reject(resultList)
+                    resultList.push({ status: MyPromise.rejectedStatus, value: err })
+                    if (resultList.length === promiseList.length) reject(resultList)
                 })
             })
-            return resultList
         })
     }
 
@@ -220,8 +217,7 @@ class MyPromise {
                     resolve(res)
                 }, err => {
                     resultList.push(err)
-                    //AggregateError:当多个错误​​需要包装在一个错误中时，该对象表示一个错误
-                    if (resultList.length === promiseList.length) reject(new AggregateError(resultList))
+                    if (resultList.length === promiseList.length) reject(resultList)
                 })
             })
         })
@@ -286,17 +282,17 @@ const p3 = new MyPromise((resolve, reject) => {
 //     console.log('=====pRace-catch====', err)
 // })
 
-MyPromise.allSettled([p1, p2, p3]).then(res => {
-    console.log('====allSettled-res====', res)
-}).catch(err => {
-    console.log('=====allSettled-catch====', err)
-})
-
-// MyPromise.any([p1, p2, p3]).then(res => {
-//     console.log('====any-res====', res)
+// MyPromise.allSettled([p1, p2, p3]).then(res => {
+//     console.log('====allSettled-res====', res)
 // }).catch(err => {
-//     console.log('=====any-catch====', err)
+//     console.log('=====allSettled-catch====', err)
 // })
+
+MyPromise.any([p3]).then(res => {
+    console.log('====any-res====', res)
+}).catch(err => {
+    console.log('=====any-catch====', err)
+})
 
 
 
