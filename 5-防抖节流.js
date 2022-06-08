@@ -35,7 +35,7 @@ function throttle(fn, delay) {
     return function (...args) {
         if (timer) return
 
-        setTimeout(() => {
+        timer = setTimeout(() => {
             fn.apply(this, args)
             timer = null // 节流重在开关锁 timer=null
         }, delay);
